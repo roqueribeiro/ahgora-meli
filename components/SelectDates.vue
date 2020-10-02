@@ -27,7 +27,7 @@
             v-on="on"
           ></v-combobox>
         </template>
-        <v-date-picker v-model="dates" multiple scrollable>
+        <v-date-picker v-model="dates" locale="pt-br" multiple scrollable>
           <v-spacer></v-spacer>
           <v-btn text color="primary" @click="menu = false"> Fechar </v-btn>
           <v-btn text color="primary" @click="selectDates(dates)"> Ok </v-btn>

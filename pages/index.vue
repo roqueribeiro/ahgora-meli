@@ -1,8 +1,8 @@
 <template>
   <div class="home">
     <!-- <img alt="Vue logo" src="../assets/logo.png" /> -->
-    <v-btn text @click="login()"> Login </v-btn>
-    <v-btn text @click="apuracao()"> Apuracao </v-btn>
+    <!-- <v-btn text @click="login()"> Login </v-btn> -->
+    <!-- <v-btn text @click="apuracao()"> Apuracao </v-btn> -->
     <v-stepper v-model="e6" vertical>
       <v-stepper-step :complete="e6 > 1" step="1">
         Selecione as Datas
@@ -46,17 +46,26 @@
         >
       </v-stepper-step>
       <v-stepper-content step="4">
-        <v-btn color="primary" @click="sendDataToAhgora()">
+        <v-progress-linear
+          v-if="sending"
+          v-model="progress"
+          height="25"
+          buffer-value="0"
+          stream
+          class="mb-5"
+        >
+          <small>{{ Math.ceil(progress) }}%</small>
+        </v-progress-linear>
+        <v-btn color="primary" :disabled="sending" @click="sendDataToAhgora()">
           Enviar dados
         </v-btn>
-        <v-btn text @click="e6 = 3"> Voltar </v-btn>
+        <v-btn text :disabled="sending" @click="e6 = 3"> Voltar </v-btn>
       </v-stepper-content>
     </v-stepper>
   </div>
 </template>
 
 <script>
-import { mapActions } from 'vuex'
 import SelectDates from '~/components/SelectDates.vue'
 import SelectTypes from '~/components/SelectTypes.vue'
 import Description from '~/components/Description.vue'
@@ -70,14 +79,18 @@ export default {
   },
   data: () => ({
     e6: 1,
-    dates: {},
+    dates: null,
     type: null,
     description: null,
+    progress: 0,
+    sending: false,
+    requestsTotal: 0,
+    requestsLength: 0,
   }),
   methods: {
-    ...mapActions(['showSnack']),
     getSelectedDates(dates) {
-      this.dates = dates
+      // eslint-disable-next-line no-console
+      this.dates = Array.from(dates)
     },
     getSelectedType(type) {
       this.type = type
@@ -86,9 +99,9 @@ export default {
       this.description = description
     },
     checkStepOneValid() {
-      if (!this.dates.length) {
-        this.showSnack({
-          text:
+      if (!this.dates || this.dates.length < 1) {
+        this.$notifier.showMessage({
+          content:
             'Selecione pelo menos um dia para fazer o apontamento de horas.',
           color: 'error',
         })
@@ -98,8 +111,8 @@ export default {
     },
     checkStepTwoValid() {
       if (!this.type) {
-        this.showSnack({
-          text: 'Selecione um tipo de apontamento para continuar.',
+        this.$notifier.showMessage({
+          content: 'Selecione um tipo de apontamento para continuar.',
           color: 'error',
         })
         return false
@@ -108,42 +121,61 @@ export default {
     },
     checkStepThreeValid() {
       if (!this.description) {
-        this.showSnack({
-          text: 'Selecione um tipo de apontamento para continuar.',
+        this.$notifier.showMessage({
+          content: 'Selecione um tipo de apontamento para continuar.',
           color: 'error',
         })
         return false
       }
       this.e6 = 4
     },
+    async axiosSendData(data) {
+      return await this.$axios.post('/ajuste', data)
+    },
     sendDataToAhgora() {
       // eslint-disable-next-line no-console
       console.log(this.dates, this.type, this.description)
+
+      this.sending = true
+      this.requestsTotal = this.dates.length
       this.dates.forEach((date) => {
-        this.$axios.post('/ajuste', {
+        this.axiosSendData({
           referencia: date,
           tipo: this.type,
           justificativa: 'outros',
           mensagem: this.description,
           addPunch: { hora: '09:00', referencia: date },
+        }).finally(() => {
+          this.requestsLength++
+          this.progress = (
+            (this.requestsLength * 100) /
+            this.requestsTotal
+          ).toFixed()
+          if (Number(this.progress) === 100) {
+            this.e6 = 1
+            this.dates = null
+            this.type = null
+            this.description = null
+            this.sending = false
+            this.$forceUpdate()
+            this.$notifier.showMessage({
+              content: 'Apontamento finalizado com sucesso!',
+              color: 'success',
+            })
+          }
         })
       })
     },
     login() {
       this.$axios.post('/login', {
         params: {
-          matricula: '16543',
-          senha: '_P@55W0rlds4',
+          matricula: 'matricula',
+          senha: 'senha',
         },
       })
     },
     apuracao() {
-      this.$axios.get('/apuracao', {
-        params: {
-          matricula: '16543',
-          senha: '_P@55W0rlds4',
-        },
-      })
+      this.$axios.get('/apuracao')
     },
   },
 }
