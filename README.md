@@ -1,5 +1,8 @@
 # ahgora-meli
 
+![diagram](./diagram_ahora.png)
+https://whimsical.com/8zGdMZPNUYxdaWaP2iTyLS
+
 ## Build Setup
 
 ```bash
